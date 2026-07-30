@@ -6,6 +6,7 @@ from datetime import datetime
 
 Base = declarative_base()
 
+# Rever essa estretura de colunas
 
 # 1. Tabela de Usuários (Clientes)
 class Usuario(Base):
