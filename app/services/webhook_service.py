@@ -1,10 +1,16 @@
 from sqlalchemy.orm import Session
 
-import app.models as models
+from app.repositories.usuario_repository import UsuarioRepository
+from app.repositories.mensagem_repository import MensagemRepository
 from app.schemas.meta import MetaDTO
 
 
 class WebhookService:
+
+    def __init__(self):
+
+        self.usuario_repository = UsuarioRepository()
+        self.mensagem_repository = MensagemRepository()
 
     async def process(
         self,
@@ -22,35 +28,23 @@ class WebhookService:
         telefone = value.contacts[0].wa_id
         texto = value.messages[0].text.body
 
-        print(f"Telefone: {telefone}")
-        print(f"Mensagem: {texto}")
-
-        usuario = (
-            db.query(models.Usuario)
-            .filter(models.Usuario.telefone == telefone)
-            .first()
+        usuario = self.usuario_repository.buscar_por_telefone(
+            telefone,
+            db
         )
 
         if usuario is None:
 
-            usuario = models.Usuario(
-                telefone=telefone
+            usuario = self.usuario_repository.criar(
+                telefone,
+                db
             )
 
-            db.add(usuario)
-
-            db.commit()
-
-            db.refresh(usuario)
-
-        mensagem = models.Mensagem(
-            texto=texto,
-            usuario_id=usuario.id
+        self.mensagem_repository.salvar(
+            texto,
+            usuario.id,
+            db
         )
-
-        db.add(mensagem)
-
-        db.commit()
 
         return {
             "status": "success"
