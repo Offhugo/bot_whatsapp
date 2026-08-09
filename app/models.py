@@ -3,6 +3,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from database import Base
 
 Base = declarative_base()
 
@@ -43,12 +44,52 @@ class Viagem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"))
-    status = Column(String, default="cotacao")  # cotacao, agendada, em_transito, concluida
+    status = Column(
+        String,
+        default="cotacao")  # cotacao, agendada, em_transito, concluida
 
     # AQUI ESTÁ A MÁGICA: A IA vai extrair dados do texto e jogar neste JSON.
     # Ex: {"origem": "São Paulo", "destino": "Sergipe", "carga": "Soja", "valor_combinado": 5000}
-    detalhes = Column(JSONB, default={})
+    detalhes = Column(
+        JSONB,
+        default={})
 
-    criado_em = Column(DateTime, default=datetime.utcnow)
+    criado_em = Column(
+        DateTime,
+        default=datetime.utcnow)
 
-    usuario = relationship("Usuario", back_populates="viagens")
+    usuario = relationship(
+        "Usuario",
+        back_populates="viagens")
+
+
+class Registro(Base):
+
+    __tablename__ = "registros"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    usuario_id = Column(
+        Integer,
+        ForeignKey("usuarios.id"),
+        nullable=False
+    )
+
+    tipo = Column(
+        String,
+        nullable=False
+    )
+
+    dados = Column(
+        JSONB,
+        nullable=False
+    )
+
+    criado_em = Column(
+        DateTime,
+        nullable=False
+    )
