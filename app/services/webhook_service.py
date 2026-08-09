@@ -7,7 +7,10 @@ from app.schemas.meta import MetaDTO
 from app.schemas.ai_response import AIResponseDTO, Intent
 
 from app.services.ai_service import AIService
-from app.services.whatsapp_service import WhatsAppService
+from app.services.whatsapp_service import WhatsAppService3
+
+from app.use_cases.registrar_km import RegistrarKMUseCase
+from app.use_cases.registrar_abastecimento import RegistrarAbastecimentoUseCase
 
 
 class WebhookService:
@@ -21,6 +24,10 @@ class WebhookService:
         self.ai_service = AIService()
 
         self.whatsapp_service = WhatsAppService()
+
+        self.registrar_km_use_case = RegistrarKMUseCase()
+
+        self.registrar_abastecimento_use_case = RegistrarAbastecimentoUseCase()
 
     async def process(
         self,
@@ -110,13 +117,21 @@ class WebhookService:
     ):
 
         if resposta.intent == Intent.REGISTRAR_KM:
-            pass
+            return self.registrar_km_use_case.executar(
+                resposta,
+                usuario_id,
+                db
+            )
 
         elif resposta.intent == Intent.REGISTRAR_VIAGEM:
             pass
 
         elif resposta.intent == Intent.REGISTRAR_ABASTECIMENTO:
-            pass
+            return self.registrar_abastecimento_use_case.executar(
+                resposta,
+                usuario_id,
+                db
+            )
 
         elif resposta.intent == Intent.CONSULTAR_KM:
             pass
