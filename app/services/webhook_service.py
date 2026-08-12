@@ -7,7 +7,7 @@ from app.schemas.meta import MetaDTO
 from app.schemas.ai_response import AIResponseDTO, Intent
 
 from app.services.ai_service import AIService
-from app.services.whatsapp_service import WhatsAppService3
+from app.services.whatsapp_service import WhatsAppService
 
 from app.use_cases.registrar_km import RegistrarKMUseCase
 from app.use_cases.registrar_abastecimento import RegistrarAbastecimentoUseCase
