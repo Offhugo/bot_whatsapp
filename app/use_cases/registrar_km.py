@@ -6,7 +6,7 @@ from app.schemas.ai_response import AIResponseDTO
 
 class RegistrarKMUseCase:
 
-    def __init__(self):
+    def __init__(self, registro_repository: RegistroRepository):
         self.registro_repository = RegistroRepository()
 
     # Recebe dados da IA, no caso um JSON com a intent interpretada pela IA
