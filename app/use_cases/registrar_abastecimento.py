@@ -6,7 +6,7 @@ from app.schemas.ai_response import AIResponseDTO
 
 class RegistrarAbastecimentoUseCase:
 
-    def __init__(self):
+    def __init__(self, registro_repository: RegistroRepository):
         self.registro_repository = RegistroRepository()
 
     def executar(
