@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.repositories.usuario_repository import UsuarioRepository
 from app.repositories.mensagem_repository import MensagemRepository
+from app.repositories.registro_repository import RegistroRepository
 
 from app.schemas.meta import MetaDTO
 from app.schemas.ai_response import AIResponseDTO, Intent
@@ -11,6 +12,9 @@ from app.services.whatsapp_service import WhatsAppService
 
 from app.use_cases.registrar_km import RegistrarKMUseCase
 from app.use_cases.registrar_abastecimento import RegistrarAbastecimentoUseCase
+from app.use_cases.registrar_viagem import RegistrarViagemUseCase
+from app.use_cases.consultar_km import ConsultarKMUseCase
+from app.use_cases.consultar_viagens import ConsultarViagensUseCase
 
 
 class WebhookService:
@@ -18,16 +22,34 @@ class WebhookService:
     def __init__(self):
 
         self.usuario_repository = UsuarioRepository()
-
         self.mensagem_repository = MensagemRepository()
 
         self.ai_service = AIService()
-
         self.whatsapp_service = WhatsAppService()
 
-        self.registrar_km_use_case = RegistrarKMUseCase()
+        # Repository compartilhado pelos Use Cases
+        self.registro_repository = RegistroRepository()
 
-        self.registrar_abastecimento_use_case = RegistrarAbastecimentoUseCase()
+        # Use Cases
+        self.registrar_km_use_case = RegistrarKMUseCase(
+            self.registro_repository
+        )
+
+        self.registrar_abastecimento_use_case = RegistrarAbastecimentoUseCase(
+            self.registro_repository
+        )
+
+        self.registrar_viagem_use_case = RegistrarViagemUseCase(
+            self.registro_repository
+        )
+
+        self.consultar_km_use_case = ConsultarKMUseCase(
+            self.registro_repository
+        )
+
+        self.consultar_viagens_use_case = ConsultarViagensUseCase(
+            self.registro_repository
+        )
 
     async def process(
         self,
@@ -43,7 +65,6 @@ class WebhookService:
             }
 
         telefone = value.contacts[0].wa_id
-
         texto = value.messages[0].text.body
 
         usuario = self._obter_ou_criar_usuario(
@@ -61,15 +82,20 @@ class WebhookService:
             texto
         )
 
-        await self._executar_intent(
+        resultado = self._executar_intent(
             resposta_ai,
             usuario.id,
             db
         )
 
+        resposta_final = self._obter_resposta(
+            resposta_ai,
+            resultado
+        )
+
         await self.whatsapp_service.enviar_mensagem(
             telefone,
-            resposta_ai.resposta
+            resposta_final
         )
 
         return {
@@ -88,7 +114,6 @@ class WebhookService:
         )
 
         if usuario is None:
-
             usuario = self.usuario_repository.criar(
                 telefone,
                 db
@@ -109,7 +134,7 @@ class WebhookService:
             db
         )
 
-    async def _executar_intent(
+    def _executar_intent(
         self,
         resposta: AIResponseDTO,
         usuario_id: int,
@@ -117,30 +142,70 @@ class WebhookService:
     ):
 
         if resposta.intent == Intent.REGISTRAR_KM:
+
             return self.registrar_km_use_case.executar(
                 resposta,
                 usuario_id,
                 db
             )
 
-        elif resposta.intent == Intent.REGISTRAR_VIAGEM:
-            pass
-
         elif resposta.intent == Intent.REGISTRAR_ABASTECIMENTO:
+
             return self.registrar_abastecimento_use_case.executar(
                 resposta,
                 usuario_id,
                 db
             )
 
+        elif resposta.intent == Intent.REGISTRAR_VIAGEM:
+
+            return self.registrar_viagem_use_case.executar(
+                resposta,
+                usuario_id,
+                db
+            )
+
         elif resposta.intent == Intent.CONSULTAR_KM:
-            pass
+
+            return self.consultar_km_use_case.executar(
+                resposta,
+                usuario_id,
+                db
+            )
 
         elif resposta.intent == Intent.CONSULTAR_VIAGENS:
-            pass
+
+            return self.consultar_viagens_use_case.executar(
+                resposta,
+                usuario_id,
+                db
+            )
 
         elif resposta.intent == Intent.CONVERSA:
-            pass
+            return None
 
         elif resposta.intent == Intent.AJUDA:
-            pass
+            return None
+
+    def _obter_resposta(
+        self,
+        resposta_ai: AIResponseDTO,
+        resultado
+    ):
+
+        # Conversa e ajuda utilizam diretamente a resposta da IA
+        if resultado is None:
+            return resposta_ai.resposta
+
+        # Caso de sucesso no Use Case
+        if resultado.get("sucesso") is True:
+            return resultado.get(
+                "mensagem",
+                resposta_ai.resposta
+            )
+
+        # Caso de validação ou informação faltante
+        return resultado.get(
+            "mensagem",
+            resposta_ai.resposta
+        )
