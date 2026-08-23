@@ -19,44 +19,36 @@ from app.use_cases.consultar_viagens import ConsultarViagensUseCase
 
 class WebhookService:
 
-    def __init__(self):
+    def __init__(
+        self,
+        usuario_repository: UsuarioRepository,
+        mensagem_repository: MensagemRepository,
+        ai_service: AIService,
+        whatsapp_service: WhatsAppService,
+        registrar_km_use_case: RegistrarKMUseCase,
+        registrar_abastecimento_use_case: RegistrarAbastecimentoUseCase,
+        registrar_viagem_use_case: RegistrarViagemUseCase,
+        consultar_km_use_case: ConsultarKMUseCase,
+        consultar_viagens_use_case: ConsultarViagensUseCase,
+    ):
+        self.usuario_repository = usuario_repository
+        self.mensagem_repository = mensagem_repository
+        self.ai_service = ai_service
+        self.whatsapp_service = whatsapp_service
 
-        self.usuario_repository = UsuarioRepository()
-        self.mensagem_repository = MensagemRepository()
-
-        self.ai_service = AIService()
-        self.whatsapp_service = WhatsAppService()
-
-        # Repository compartilhado pelos Use Cases
-        self.registro_repository = RegistroRepository()
-
-        # Use Cases
-        self.registrar_km_use_case = RegistrarKMUseCase(
-            self.registro_repository
+        self.registrar_km_use_case = registrar_km_use_case
+        self.registrar_abastecimento_use_case = (
+            registrar_abastecimento_use_case
         )
-
-        self.registrar_abastecimento_use_case = RegistrarAbastecimentoUseCase(
-            self.registro_repository
-        )
-
-        self.registrar_viagem_use_case = RegistrarViagemUseCase(
-            self.registro_repository
-        )
-
-        self.consultar_km_use_case = ConsultarKMUseCase(
-            self.registro_repository
-        )
-
-        self.consultar_viagens_use_case = ConsultarViagensUseCase(
-            self.registro_repository
-        )
+        self.registrar_viagem_use_case = registrar_viagem_use_case
+        self.consultar_km_use_case = consultar_km_use_case
+        self.consultar_viagens_use_case = consultar_viagens_use_case
 
     async def process(
         self,
         payload: MetaDTO,
         db: Session
     ):
-
         value = payload.entry[0].changes[0].value
 
         if not value.messages:
@@ -107,7 +99,6 @@ class WebhookService:
         telefone: str,
         db: Session
     ):
-
         usuario = self.usuario_repository.buscar_por_telefone(
             telefone,
             db
@@ -127,7 +118,6 @@ class WebhookService:
         usuario_id: int,
         db: Session
     ):
-
         self.mensagem_repository.salvar(
             texto,
             usuario_id,
@@ -140,9 +130,7 @@ class WebhookService:
         usuario_id: int,
         db: Session
     ):
-
         if resposta.intent == Intent.REGISTRAR_KM:
-
             return self.registrar_km_use_case.executar(
                 resposta,
                 usuario_id,
@@ -150,7 +138,6 @@ class WebhookService:
             )
 
         elif resposta.intent == Intent.REGISTRAR_ABASTECIMENTO:
-
             return self.registrar_abastecimento_use_case.executar(
                 resposta,
                 usuario_id,
@@ -158,7 +145,6 @@ class WebhookService:
             )
 
         elif resposta.intent == Intent.REGISTRAR_VIAGEM:
-
             return self.registrar_viagem_use_case.executar(
                 resposta,
                 usuario_id,
@@ -166,7 +152,6 @@ class WebhookService:
             )
 
         elif resposta.intent == Intent.CONSULTAR_KM:
-
             return self.consultar_km_use_case.executar(
                 resposta,
                 usuario_id,
@@ -174,7 +159,6 @@ class WebhookService:
             )
 
         elif resposta.intent == Intent.CONSULTAR_VIAGENS:
-
             return self.consultar_viagens_use_case.executar(
                 resposta,
                 usuario_id,
@@ -187,25 +171,17 @@ class WebhookService:
         elif resposta.intent == Intent.AJUDA:
             return None
 
+        return None
+
     def _obter_resposta(
         self,
         resposta_ai: AIResponseDTO,
         resultado
     ):
-
-        # Conversa e ajuda utilizam diretamente a resposta da IA
         if resultado is None:
             return resposta_ai.resposta
 
-        # Caso de sucesso no Use Case
-        if resultado.get("sucesso") is True:
-            return resultado.get(
-                "mensagem",
-                resposta_ai.resposta
-            )
+        if resultado.get("mensagem"):
+            return resultado["mensagem"]
 
-        # Caso de validação ou informação faltante
-        return resultado.get(
-            "mensagem",
-            resposta_ai.resposta
-        )
+        return resposta_ai.resposta
