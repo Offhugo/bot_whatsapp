@@ -25,6 +25,11 @@ def criar_webhook_service_para_teste():
         "mensagem": "430 km registrados."
     }
 
+    registrar_abastecimento_use_case.executar.return_value = {
+        "sucesso": True,
+        "mensagem": "Abastecimento registrado."
+    }
+
     return (
         WebhookService(
             usuario_repository=usuario_repository,
@@ -42,11 +47,13 @@ def criar_webhook_service_para_teste():
         ai_service,
         whatsapp_service,
         registrar_km_use_case,
+        registrar_abastecimento_use_case,
     )
 
 
 @pytest.mark.anyio
 async def test_webhook_encaminha_registrar_km():
+
     (
         service,
         usuario_repository,
@@ -54,6 +61,7 @@ async def test_webhook_encaminha_registrar_km():
         ai_service,
         whatsapp_service,
         registrar_km_use_case,
+        registrar_abastecimento_use_case,
     ) = criar_webhook_service_para_teste()
 
     usuario = SimpleNamespace(id=1)
@@ -110,75 +118,157 @@ async def test_webhook_encaminha_registrar_km():
 
     registrar_km_use_case.executar.assert_called_once()
 
+    registrar_abastecimento_use_case.executar.assert_not_called()
+
     whatsapp_service.enviar_mensagem.assert_awaited_once_with(
         "5511999999999",
         "430 km registrados."
     )
 
-    @pytest.mark.anyio
-    async def test_webhook_trata_conversa_sem_use_case():
-        (
-            service,
-            usuario_repository,
-            mensagem_repository,
-            ai_service,
-            whatsapp_service,
-            registrar_km_use_case,
-        ) = criar_webhook_service_para_teste()
 
-        usuario = SimpleNamespace(id=1)
+@pytest.mark.anyio
+async def test_webhook_trata_conversa_sem_use_case():
 
-        usuario_repository.buscar_por_telefone.return_value = usuario
+    (
+        service,
+        usuario_repository,
+        mensagem_repository,
+        ai_service,
+        whatsapp_service,
+        registrar_km_use_case,
+        registrar_abastecimento_use_case,
+    ) = criar_webhook_service_para_teste()
 
-        ai_service.processar = AsyncMock(
-            return_value=AIResponseDTO(
-                intent=Intent.CONVERSA,
-                dados={},
-                resposta="Bom dia! Como posso ajudar?"
-            )
+    usuario = SimpleNamespace(id=1)
+
+    usuario_repository.buscar_por_telefone.return_value = usuario
+
+    ai_service.processar = AsyncMock(
+        return_value=AIResponseDTO(
+            intent=Intent.CONVERSA,
+            dados={},
+            resposta="Bom dia! Como posso ajudar?"
         )
+    )
 
-        whatsapp_service.enviar_mensagem = AsyncMock()
+    whatsapp_service.enviar_mensagem = AsyncMock()
 
-        payload = SimpleNamespace(
-            entry=[
-                SimpleNamespace(
-                    changes=[
-                        SimpleNamespace(
-                            value=SimpleNamespace(
-                                messages=[
-                                    SimpleNamespace(
-                                        text=SimpleNamespace(
-                                            body="Bom dia!"
-                                        )
+    payload = SimpleNamespace(
+        entry=[
+            SimpleNamespace(
+                changes=[
+                    SimpleNamespace(
+                        value=SimpleNamespace(
+                            messages=[
+                                SimpleNamespace(
+                                    text=SimpleNamespace(
+                                        body="Bom dia!"
                                     )
-                                ],
-                                contacts=[
-                                    SimpleNamespace(
-                                        wa_id="5511999999999"
-                                    )
-                                ]
-                            )
+                                )
+                            ],
+                            contacts=[
+                                SimpleNamespace(
+                                    wa_id="5511999999999"
+                                )
+                            ]
                         )
-                    ]
-                )
-            ]
+                    )
+                ]
+            )
+        ]
+    )
+
+    db = Mock()
+
+    resultado = await service.process(
+        payload,
+        db
+    )
+
+    assert resultado == {
+        "status": "success"
+    }
+
+    registrar_km_use_case.executar.assert_not_called()
+
+    registrar_abastecimento_use_case.executar.assert_not_called()
+
+    whatsapp_service.enviar_mensagem.assert_awaited_once_with(
+        "5511999999999",
+        "Bom dia! Como posso ajudar?"
+    )
+
+
+@pytest.mark.anyio
+async def test_webhook_encaminha_registrar_abastecimento():
+
+    (
+        service,
+        usuario_repository,
+        mensagem_repository,
+        ai_service,
+        whatsapp_service,
+        registrar_km_use_case,
+        registrar_abastecimento_use_case,
+    ) = criar_webhook_service_para_teste()
+
+    usuario = SimpleNamespace(id=1)
+
+    usuario_repository.buscar_por_telefone.return_value = usuario
+
+    ai_service.processar = AsyncMock(
+        return_value=AIResponseDTO(
+            intent=Intent.REGISTRAR_ABASTECIMENTO,
+            dados={
+                "valor": 500
+            },
+            resposta="Abastecimento registrado."
         )
+    )
 
-        db = Mock()
+    whatsapp_service.enviar_mensagem = AsyncMock()
 
-        resultado = await service.process(
-            payload,
-            db
-        )
+    payload = SimpleNamespace(
+        entry=[
+            SimpleNamespace(
+                changes=[
+                    SimpleNamespace(
+                        value=SimpleNamespace(
+                            messages=[
+                                SimpleNamespace(
+                                    text=SimpleNamespace(
+                                        body="Abasteci 500 reais."
+                                    )
+                                )
+                            ],
+                            contacts=[
+                                SimpleNamespace(
+                                    wa_id="5511999999999"
+                                )
+                            ]
+                        )
+                    )
+                ]
+            )
+        ]
+    )
 
-        assert resultado == {
-            "status": "success"
-        }
+    db = Mock()
 
-        registrar_km_use_case.executar.assert_not_called()
+    resultado = await service.process(
+        payload,
+        db
+    )
 
-        whatsapp_service.enviar_mensagem.assert_awaited_once_with(
-            "5511999999999",
-            "Bom dia! Como posso ajudar?"
-        )
+    assert resultado == {
+        "status": "success"
+    }
+
+    registrar_abastecimento_use_case.executar.assert_called_once()
+
+    registrar_km_use_case.executar.assert_not_called()
+
+    whatsapp_service.enviar_mensagem.assert_awaited_once_with(
+        "5511999999999",
+        "Abastecimento registrado."
+    )
