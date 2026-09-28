@@ -2,7 +2,6 @@ from sqlalchemy.orm import Session
 
 from app.repositories.usuario_repository import UsuarioRepository
 from app.repositories.mensagem_repository import MensagemRepository
-from app.repositories.registro_repository import RegistroRepository
 
 from app.schemas.meta import MetaDTO
 from app.schemas.ai_response import AIResponseDTO, Intent
