@@ -1,1 +1,13 @@
+# Variáveis de ambiente
 .env
+
+# Cache do Python
+__pycache__/
+*.py[cod]
+
+# Ambiente virtual
+.venv/
+venv/
+
+# Cache do pytest
+.pytest_cache/
