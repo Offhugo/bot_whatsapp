@@ -3,6 +3,10 @@ from datetime import datetime
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from datetime import datetime
+
+from app.models import Usuario, Empresa, Viagem, Registro
+
 from app.models import (
     Empresa,
     Registro,
@@ -239,3 +243,153 @@ def test_registro_pode_ser_associado_a_uma_empresa(db):
     assert registro_salvo is not None
     assert registro_salvo.usuario_id == usuario.id
     assert registro_salvo.empresa_id == empresa.id
+
+def test_viagem_pode_ser_associada_a_empresa(db):
+    usuario = Usuario(
+        telefone="5511999999999",
+        nome="Motorista Teste"
+    )
+
+    empresa = Empresa(
+        nome="Empresa A",
+        cnpj="12345678000199"
+    )
+
+    db.add(usuario)
+    db.add(empresa)
+    db.commit()
+
+    viagem = Viagem(
+        usuario_id=usuario.id,
+        empresa_id=empresa.id,
+        status="em_andamento",
+        detalhes={
+            "origem": "Aracaju",
+            "destino": "Salvador"
+        },
+        criado_em=datetime.utcnow()
+    )
+
+    db.add(viagem)
+    db.commit()
+    db.refresh(viagem)
+
+    assert viagem.usuario_id == usuario.id
+    assert viagem.empresa_id == empresa.id
+    assert viagem.empresa == empresa
+
+
+def test_viagem_pode_existir_sem_empresa(db):
+    usuario = Usuario(
+        telefone="5511888888888",
+        nome="Motorista Independente"
+    )
+
+    db.add(usuario)
+    db.commit()
+
+    viagem = Viagem(
+        usuario_id=usuario.id,
+        empresa_id=None,
+        status="em_andamento",
+        detalhes={
+            "origem": "Aracaju",
+            "destino": "Maceió"
+        },
+        criado_em=datetime.utcnow()
+    )
+
+    db.add(viagem)
+    db.commit()
+    db.refresh(viagem)
+
+    assert viagem.usuario_id == usuario.id
+    assert viagem.empresa_id is None
+    assert viagem.empresa is None
+
+
+def test_registro_pode_ser_associado_a_viagem(db):
+    usuario = Usuario(
+        telefone="5511777777777",
+        nome="Motorista"
+    )
+
+    empresa = Empresa(
+        nome="Empresa B",
+        cnpj="98765432000188"
+    )
+
+    db.add(usuario)
+    db.add(empresa)
+    db.commit()
+
+    viagem = Viagem(
+        usuario_id=usuario.id,
+        empresa_id=empresa.id,
+        status="em_andamento",
+        detalhes={
+            "origem": "Aracaju",
+            "destino": "Recife"
+        },
+        criado_em=datetime.utcnow()
+    )
+
+    db.add(viagem)
+    db.commit()
+    db.refresh(viagem)
+
+    registro = Registro(
+        usuario_id=usuario.id,
+        empresa_id=empresa.id,
+        viagem_id=viagem.id,
+        tipo="km",
+        dados={
+            "quilometros": 500
+        },
+        criado_em=datetime.utcnow()
+    )
+
+    db.add(registro)
+    db.commit()
+    db.refresh(registro)
+
+    assert registro.usuario_id == usuario.id
+    assert registro.empresa_id == empresa.id
+    assert registro.viagem_id == viagem.id
+    assert registro.viagem == viagem
+
+
+def test_registro_pode_existir_sem_viagem(db):
+    usuario = Usuario(
+        telefone="5511666666666",
+        nome="Motorista"
+    )
+
+    empresa = Empresa(
+        nome="Empresa C",
+        cnpj="11222333000144"
+    )
+
+    db.add(usuario)
+    db.add(empresa)
+    db.commit()
+
+    registro = Registro(
+        usuario_id=usuario.id,
+        empresa_id=empresa.id,
+        viagem_id=None,
+        tipo="km",
+        dados={
+            "quilometros": 200
+        },
+        criado_em=datetime.utcnow()
+    )
+
+    db.add(registro)
+    db.commit()
+    db.refresh(registro)
+
+    assert registro.usuario_id == usuario.id
+    assert registro.empresa_id == empresa.id
+    assert registro.viagem_id is None
+    assert registro.viagem is None

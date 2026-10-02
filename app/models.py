@@ -124,6 +124,11 @@ class Empresa(Base):
         back_populates="empresa"
     )
 
+    viagens = relationship(
+        "Viagem",
+        back_populates="empresa"
+    )
+
 
 # ============================================================
 # 3. Vínculo entre usuário e empresa
@@ -239,6 +244,12 @@ class Viagem(Base):
         ForeignKey("usuarios.id")
     )
 
+    empresa_id = Column(
+        Integer,
+        ForeignKey("empresas.id"),
+        nullable=True
+    )
+
     status = Column(
         String,
         default="cotacao"
@@ -259,6 +270,16 @@ class Viagem(Base):
         back_populates="viagens"
     )
 
+    empresa = relationship(
+        "Empresa",
+        back_populates="viagens"
+    )
+
+    registros = relationship(
+        "Registro",
+        back_populates="viagem"
+    )
+
 
 # ============================================================
 # 6. Registro operacional
@@ -271,6 +292,12 @@ class Registro(Base):
         Integer,
         primary_key=True,
         index=True
+    )
+
+    viagem_id = Column(
+        Integer,
+        ForeignKey("viagens.id"),
+        nullable=True
     )
 
     usuario_id = Column(
@@ -309,5 +336,10 @@ class Registro(Base):
 
     empresa = relationship(
         "Empresa",
+        back_populates="registros"
+    )
+
+    viagem = relationship(
+        "Viagem",
         back_populates="registros"
     )
