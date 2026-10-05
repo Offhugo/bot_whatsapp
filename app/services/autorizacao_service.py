@@ -32,11 +32,39 @@ class AutorizacaoService:
 
         return False
 
-    def _pode_acessar_empresa(self, usuario, empresa_id) -> bool:
+    def pode_registrar(self, usuario) -> bool:
         """
-        Gerentes só acessam empresas nas quais possuem
-        vínculo ativo.
+        Operações de registro pertencem ao motorista no MVP.
         """
+
+        return usuario.perfil == "motorista"
+
+    def pode_registrar_em_empresa(
+        self,
+        usuario,
+        empresa_id: int | None
+    ) -> bool:
+        """
+        Verifica se o motorista pode registrar uma operação
+        vinculada a determinada empresa.
+        """
+
+        if not self.pode_registrar(usuario):
+            return False
+
+        if empresa_id is None:
+            return True
+
+        return self._pode_acessar_empresa(
+            usuario,
+            empresa_id
+        )
+
+    def _pode_acessar_empresa(
+        self,
+        usuario,
+        empresa_id: int | None
+    ) -> bool:
 
         if empresa_id is None:
             return False

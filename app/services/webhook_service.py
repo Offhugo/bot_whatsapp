@@ -8,6 +8,8 @@ from app.schemas.ai_response import AIResponseDTO, Intent
 
 from app.services.ai_service import AIService
 from app.services.whatsapp_service import WhatsAppService
+from app.repositories.viagem_repository import ViagemRepository
+from app.services.autorizacao_service import AutorizacaoService
 
 from app.use_cases.registrar_km import RegistrarKMUseCase
 from app.use_cases.registrar_abastecimento import RegistrarAbastecimentoUseCase
@@ -22,8 +24,10 @@ class WebhookService:
         self,
         usuario_repository: UsuarioRepository,
         mensagem_repository: MensagemRepository,
+        viagem_repository: ViagemRepository,
         ai_service: AIService,
         whatsapp_service: WhatsAppService,
+        autorizacao_service: AutorizacaoService,
         registrar_km_use_case: RegistrarKMUseCase,
         registrar_abastecimento_use_case: RegistrarAbastecimentoUseCase,
         registrar_viagem_use_case: RegistrarViagemUseCase,
@@ -32,8 +36,10 @@ class WebhookService:
     ):
         self.usuario_repository = usuario_repository
         self.mensagem_repository = mensagem_repository
+        self.viagem_repository = viagem_repository
         self.ai_service = ai_service
         self.whatsapp_service = whatsapp_service
+        self.autorizacao_service = autorizacao_service
 
         self.registrar_km_use_case = registrar_km_use_case
         self.registrar_abastecimento_use_case = (
@@ -75,7 +81,7 @@ class WebhookService:
 
         resultado = self._executar_intent(
             resposta_ai,
-            usuario.id,
+            usuario,
             db
         )
 
@@ -124,43 +130,84 @@ class WebhookService:
         )
 
     def _executar_intent(
-        self,
-        resposta: AIResponseDTO,
-        usuario_id: int,
-        db: Session
+            self,
+            resposta: AIResponseDTO,
+            usuario,
+            db: Session
     ):
+        if resposta.intent in (
+                Intent.REGISTRAR_KM,
+                Intent.REGISTRAR_ABASTECIMENTO,
+                Intent.REGISTRAR_VIAGEM,
+        ):
+            if not self.autorizacao_service.pode_registrar(usuario):
+                return {
+                    "mensagem": "Você não possui permissão para realizar essa operação."
+                }
+
+        viagem = self._obter_viagem_contexto(
+            resposta,
+            db
+        )
+
+        if resposta.dados.get("viagem_id") is not None:
+
+            if viagem is None:
+                return {
+                    "mensagem": "Não encontrei a viagem informada."
+                }
+
+            if not self.autorizacao_service.pode_acessar_viagem(
+                    usuario,
+                    viagem
+            ):
+                return {
+                    "mensagem": "Você não possui autorização para acessar essa viagem."
+                }
+
+        if resposta.intent == Intent.REGISTRAR_VIAGEM:
+
+            empresa_id = resposta.dados.get("empresa_id")
+
+            if not self.autorizacao_service.pode_registrar_em_empresa(
+                    usuario,
+                    empresa_id
+            ):
+                return {
+                    "mensagem": "Você não possui autorização para registrar essa viagem nessa empresa."
+                }
+
+            return self.registrar_viagem_use_case.executar(
+                resposta,
+                usuario.id,
+                db
+            )
+
         if resposta.intent == Intent.REGISTRAR_KM:
             return self.registrar_km_use_case.executar(
                 resposta,
-                usuario_id,
+                usuario.id,
                 db
             )
 
         elif resposta.intent == Intent.REGISTRAR_ABASTECIMENTO:
             return self.registrar_abastecimento_use_case.executar(
                 resposta,
-                usuario_id,
-                db
-            )
-
-        elif resposta.intent == Intent.REGISTRAR_VIAGEM:
-            return self.registrar_viagem_use_case.executar(
-                resposta,
-                usuario_id,
+                usuario.id,
                 db
             )
 
         elif resposta.intent == Intent.CONSULTAR_KM:
             return self.consultar_km_use_case.executar(
                 resposta,
-                usuario_id,
+                usuario.id,
                 db
             )
 
         elif resposta.intent == Intent.CONSULTAR_VIAGENS:
             return self.consultar_viagens_use_case.executar(
                 resposta,
-                usuario_id,
+                usuario.id,
                 db
             )
 
@@ -184,3 +231,18 @@ class WebhookService:
             return resultado["mensagem"]
 
         return resposta_ai.resposta
+
+    def _obter_viagem_contexto(
+            self,
+            resposta: AIResponseDTO,
+            db: Session
+    ):
+        viagem_id = resposta.dados.get("viagem_id")
+
+        if viagem_id is None:
+            return None
+
+        return self.viagem_repository.buscar_por_id(
+            viagem_id,
+            db
+        )
