@@ -5,6 +5,9 @@ from fastapi import (
     Query,
     Request
 )
+from app.repositories.viagem_repository import ViagemRepository
+from app.services.autorizacao_service import AutorizacaoService
+
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
@@ -37,6 +40,8 @@ router = APIRouter()
 
 def criar_webhook_service() -> WebhookService:
     registro_repository = RegistroRepository()
+    viagem_repository = ViagemRepository()
+    autorizacao_service = AutorizacaoService()
 
     return WebhookService(
         usuario_repository=UsuarioRepository(),
@@ -58,6 +63,8 @@ def criar_webhook_service() -> WebhookService:
         consultar_viagens_use_case=ConsultarViagensUseCase(
             registro_repository
         ),
+        viagem_repository=viagem_repository,
+        autorizacao_service=autorizacao_service,
     )
 
 

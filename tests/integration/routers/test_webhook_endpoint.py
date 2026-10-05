@@ -341,3 +341,53 @@ def test_webhook_endpoint_rejeita_payload_invalido(
 
     # O WebhookService não deve ser executado.
     webhook_service.process.assert_not_awaited()
+
+def test_webhook_endpoint_aceita_payload_sem_messages(
+    client,
+    monkeypatch
+):
+    webhook_service = criar_webhook_service_mock(
+        monkeypatch
+    )
+
+    payload = {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "changes": [
+                    {
+                        "value": {
+                            "contacts": [
+                                {
+                                    "wa_id": "5511999999999"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+
+    payload_bytes = json.dumps(
+        payload,
+        separators=(",", ":"),
+        ensure_ascii=False
+    ).encode("utf-8")
+
+    assinatura = criar_assinatura(
+        payload_bytes
+    )
+
+    response = client.post(
+        "/webhook",
+        content=payload_bytes,
+        headers={
+            "Content-Type": "application/json",
+            "X-Hub-Signature-256": assinatura
+        }
+    )
+
+    assert response.status_code == 200
+
+    webhook_service.process.assert_awaited_once()
