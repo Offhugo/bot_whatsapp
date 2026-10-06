@@ -1,40 +1,181 @@
-from app.models import Usuario
-from app.repositories.registro_repository import RegistroRepository
-from app.use_cases.registrar_km import RegistrarKMUseCase
+from unittest.mock import MagicMock
+
 from app.schemas.ai_response import AIResponseDTO
+from app.use_cases.registrar_km import RegistrarKMUseCase
+from app.utils.validation_limits import MAX_QUILOMETROS_POR_REGISTRO
 
 
-def test_registrar_km_com_sucesso(db):
-
-    # Criação do user para testes
-    usuario = Usuario(
-        telefone="5511999999999"
-    )
-
-    # adicionando o user ao banco
-    db.add(usuario)
-    db.commit()
-    db.refresh(usuario)
-
-    # Carrega as var que vão ser passadas para o código ser testado
-    repository = RegistroRepository()
-    use_case = RegistrarKMUseCase(repository)
-
-    # Extrai a informação que queremos, no caso os Kms
-    resposta = AIResponseDTO(
+def criar_resposta(quilometros):
+    return AIResponseDTO(
         intent="registrar_km",
         dados={
-            "quilometros": 430
+            "quilometros": quilometros
         },
-        resposta="Registro de quilometragem realizado com sucesso."
+        resposta="Quilometragem registrada."
     )
 
-    # Resultado das operações
+
+def criar_use_case():
+    repository = MagicMock()
+    use_case = RegistrarKMUseCase(repository)
+
+    return use_case, repository
+
+
+def test_registrar_km_com_valor_inteiro_valido():
+    use_case, repository = criar_use_case()
+
+    resposta = criar_resposta(430)
+
     resultado = use_case.executar(
-        resposta=resposta,
-        usuario_id=usuario.id,
-        db=db
+        resposta,
+        usuario_id=1,
+        db=MagicMock()
     )
 
-    # Validação final
     assert resultado["sucesso"] is True
+    repository.salvar.assert_called_once()
+
+
+def test_registrar_km_com_valor_decimal_valido():
+    use_case, repository = criar_use_case()
+
+    resposta = criar_resposta(430.5)
+
+    resultado = use_case.executar(
+        resposta,
+        usuario_id=1,
+        db=MagicMock()
+    )
+
+    assert resultado["sucesso"] is True
+    repository.salvar.assert_called_once()
+
+
+def test_registrar_km_rejeita_string_numerica():
+    use_case, repository = criar_use_case()
+
+    resposta = criar_resposta("430")
+
+    resultado = use_case.executar(
+        resposta,
+        usuario_id=1,
+        db=MagicMock()
+    )
+
+    assert resultado["sucesso"] is False
+    repository.salvar.assert_not_called()
+
+
+def test_registrar_km_rejeita_zero():
+    use_case, repository = criar_use_case()
+
+    resposta = criar_resposta(0)
+
+    resultado = use_case.executar(
+        resposta,
+        usuario_id=1,
+        db=MagicMock()
+    )
+
+    assert resultado["sucesso"] is False
+    repository.salvar.assert_not_called()
+
+
+def test_registrar_km_rejeita_valor_negativo():
+    use_case, repository = criar_use_case()
+
+    resposta = criar_resposta(-50)
+
+    resultado = use_case.executar(
+        resposta,
+        usuario_id=1,
+        db=MagicMock()
+    )
+
+    assert resultado["sucesso"] is False
+    repository.salvar.assert_not_called()
+
+
+def test_registrar_km_rejeita_booleano():
+    use_case, repository = criar_use_case()
+
+    resposta = criar_resposta(True)
+
+    resultado = use_case.executar(
+        resposta,
+        usuario_id=1,
+        db=MagicMock()
+    )
+
+    assert resultado["sucesso"] is False
+    repository.salvar.assert_not_called()
+
+
+def test_registrar_km_rejeita_nan():
+    use_case, repository = criar_use_case()
+
+    resposta = criar_resposta(float("nan"))
+
+    resultado = use_case.executar(
+        resposta,
+        usuario_id=1,
+        db=MagicMock()
+    )
+
+    assert resultado["sucesso"] is False
+    repository.salvar.assert_not_called()
+
+
+def test_registrar_km_rejeita_infinito():
+    use_case, repository = criar_use_case()
+
+    resposta = criar_resposta(float("inf"))
+
+    resultado = use_case.executar(
+        resposta,
+        usuario_id=1,
+        db=MagicMock()
+    )
+
+    assert resultado["sucesso"] is False
+    repository.salvar.assert_not_called()
+
+
+def test_registrar_km_rejeita_valor_acima_do_limite():
+    use_case, repository = criar_use_case()
+
+    resposta = criar_resposta(
+        MAX_QUILOMETROS_POR_REGISTRO + 1
+    )
+
+    resultado = use_case.executar(
+        resposta,
+        usuario_id=1,
+        db=MagicMock()
+    )
+
+    assert resultado["sucesso"] is False
+    repository.salvar.assert_not_called()
+
+
+def test_registrar_km_rejeita_campo_ausente():
+    use_case, repository = criar_use_case()
+
+    resposta = AIResponseDTO(
+        intent="registrar_km",
+        dados={},
+        resposta="Preciso da quilometragem."
+    )
+
+    resultado = use_case.executar(
+        resposta,
+        usuario_id=1,
+        db=MagicMock()
+    )
+
+    assert resultado["sucesso"] is False
+    assert resultado["mensagem"] == (
+        "Quantos quilômetros foram percorridos?"
+    )
+    repository.salvar.assert_not_called()
