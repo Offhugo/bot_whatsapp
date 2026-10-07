@@ -17,6 +17,8 @@ from app.use_cases.registrar_viagem import RegistrarViagemUseCase
 from app.use_cases.consultar_km import ConsultarKMUseCase
 from app.use_cases.consultar_viagens import ConsultarViagensUseCase
 
+from app.utils.validation_limits import MAX_RESOURCE_ID
+
 
 class WebhookService:
 
@@ -145,6 +147,19 @@ class WebhookService:
                     "mensagem": "Você não possui permissão para realizar essa operação."
                 }
 
+        viagem_id = resposta.dados.get("viagem_id")
+        empresa_id = resposta.dados.get("empresa_id")
+
+        if not self._validar_id_recurso(viagem_id):
+            return {
+                "mensagem": "O identificador da viagem informado é inválido."
+            }
+
+        if not self._validar_id_recurso(empresa_id):
+            return {
+                "mensagem": "O identificador da empresa informado é inválido."
+            }
+
         viagem = self._obter_viagem_contexto(
             resposta,
             db
@@ -246,3 +261,15 @@ class WebhookService:
             viagem_id,
             db
         )
+
+    def _validar_id_recurso(self, valor):
+        if valor is None:
+            return True
+
+        if isinstance(valor, bool):
+            return False
+
+        if not isinstance(valor, int):
+            return False
+
+        return 0 < valor <= MAX_RESOURCE_ID
