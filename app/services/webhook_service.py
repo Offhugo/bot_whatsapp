@@ -19,6 +19,8 @@ from app.use_cases.consultar_viagens import ConsultarViagensUseCase
 
 from app.utils.validation_limits import MAX_RESOURCE_ID
 
+from app.utils.ai_data_validation import validar_dados_da_ia
+
 
 class WebhookService:
 
@@ -137,6 +139,20 @@ class WebhookService:
             usuario,
             db: Session
     ):
+        try:
+            dados_validados = validar_dados_da_ia(
+                resposta.intent,
+                resposta.dados,
+            )
+        except ValueError:
+            return {
+                "mensagem": "Não consegui validar os dados recebidos."
+            }
+
+        resposta = resposta.model_copy(
+            update={"dados": dados_validados}
+        )
+        
         if resposta.intent in (
                 Intent.REGISTRAR_KM,
                 Intent.REGISTRAR_ABASTECIMENTO,
