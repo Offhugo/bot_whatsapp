@@ -20,6 +20,7 @@ def criar_webhook_service_para_teste():
     consultar_km_use_case = Mock()
     consultar_viagens_use_case = Mock()
 
+
     registrar_km_use_case.executar.return_value = {
         "sucesso": True,
         "mensagem": "430 km registrados."
