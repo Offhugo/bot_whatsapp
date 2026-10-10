@@ -36,9 +36,15 @@ async def tratar_http_exception(
             request.url.path,
         )
 
+    detalhe = (
+        exc.detail
+        if exc.status_code < 500
+        else "Erro interno do servidor."
+    )
+
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
+        content={"detail": detalhe},
         headers=exc.headers,
     )
 

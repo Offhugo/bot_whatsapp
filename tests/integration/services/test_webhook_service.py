@@ -7,19 +7,21 @@ from app.schemas.ai_response import AIResponseDTO, Intent
 from app.services.webhook_service import WebhookService
 
 
+
 def criar_webhook_service_para_teste():
     usuario_repository = Mock()
     mensagem_repository = Mock()
+    viagem_repository = Mock()
 
     ai_service = Mock()
     whatsapp_service = Mock()
+    autorizacao_service = Mock()
 
     registrar_km_use_case = Mock()
     registrar_abastecimento_use_case = Mock()
     registrar_viagem_use_case = Mock()
     consultar_km_use_case = Mock()
     consultar_viagens_use_case = Mock()
-
 
     registrar_km_use_case.executar.return_value = {
         "sucesso": True,
@@ -31,10 +33,14 @@ def criar_webhook_service_para_teste():
         "mensagem": "Abastecimento registrado."
     }
 
+    # Mantenha aqui o restante da função existente.
+
     return (
         WebhookService(
             usuario_repository=usuario_repository,
             mensagem_repository=mensagem_repository,
+            viagem_repository=viagem_repository,
+            autorizacao_service=autorizacao_service,
             ai_service=ai_service,
             whatsapp_service=whatsapp_service,
             registrar_km_use_case=registrar_km_use_case,
