@@ -71,7 +71,7 @@ async def test_webhook_encaminha_registrar_km():
         registrar_abastecimento_use_case,
     ) = criar_webhook_service_para_teste()
 
-    usuario = SimpleNamespace(id=1)
+    usuario = SimpleNamespace(id=1, perfil="motorista")
 
     usuario_repository.buscar_por_telefone.return_value = usuario
 
@@ -146,7 +146,7 @@ async def test_webhook_trata_conversa_sem_use_case():
         registrar_abastecimento_use_case,
     ) = criar_webhook_service_para_teste()
 
-    usuario = SimpleNamespace(id=1)
+    usuario = SimpleNamespace(id=1, perfil="motorista")
 
     usuario_repository.buscar_por_telefone.return_value = usuario
 
@@ -219,7 +219,7 @@ async def test_webhook_encaminha_registrar_abastecimento():
         registrar_abastecimento_use_case,
     ) = criar_webhook_service_para_teste()
 
-    usuario = SimpleNamespace(id=1)
+    usuario = SimpleNamespace(id=1, perfil="motorista")
 
     usuario_repository.buscar_por_telefone.return_value = usuario
 

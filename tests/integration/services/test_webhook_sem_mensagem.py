@@ -10,9 +10,11 @@ def criar_webhook_service_para_teste():
 
     usuario_repository = Mock()
     mensagem_repository = Mock()
+    viagem_repository = Mock()
 
     ai_service = Mock()
     whatsapp_service = Mock()
+    autorizacao_service = Mock()
 
     registrar_km_use_case = Mock()
     registrar_abastecimento_use_case = Mock()
@@ -23,8 +25,10 @@ def criar_webhook_service_para_teste():
     return WebhookService(
         usuario_repository=usuario_repository,
         mensagem_repository=mensagem_repository,
+        viagem_repository=viagem_repository,
         ai_service=ai_service,
         whatsapp_service=whatsapp_service,
+        autorizacao_service=autorizacao_service,
         registrar_km_use_case=registrar_km_use_case,
         registrar_abastecimento_use_case=registrar_abastecimento_use_case,
         registrar_viagem_use_case=registrar_viagem_use_case,
