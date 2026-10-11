@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock, AsyncMock
 
 import pytest
 
@@ -6,6 +6,7 @@ from app.models import Registro, Usuario
 from app.repositories.mensagem_repository import MensagemRepository
 from app.repositories.registro_repository import RegistroRepository
 from app.repositories.usuario_repository import UsuarioRepository
+from app.repositories.viagem_repository import ViagemRepository
 from app.schemas.ai_response import AIResponseDTO, Intent
 from app.schemas.meta import (
     ChangeDTO,
@@ -17,6 +18,7 @@ from app.schemas.meta import (
     ValueDTO,
 )
 from app.services.webhook_service import WebhookService
+from app.services.autorizacao_service import AutorizacaoService
 from app.use_cases.consultar_km import ConsultarKMUseCase
 from app.use_cases.consultar_viagens import ConsultarViagensUseCase
 from app.use_cases.registrar_abastecimento import RegistrarAbastecimentoUseCase
@@ -72,6 +74,8 @@ async def test_fluxo_completo_registrar_km(db):
     service = WebhookService(
         usuario_repository=UsuarioRepository(),
         mensagem_repository=MensagemRepository(),
+        viagem_repository=ViagemRepository(),
+        autorizacao_service=AutorizacaoService(),
         ai_service=ai_service,
         whatsapp_service=whatsapp_service,
         registrar_km_use_case=registrar_km_use_case,
