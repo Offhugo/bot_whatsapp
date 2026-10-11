@@ -60,9 +60,32 @@ def criar_tabelas():
 
 @pytest.fixture
 def db():
-    db = TestSessionLocal()
+    """
+    Fixture que fornece uma sessão de banco de dados para os testes.
+
+    Utiliza transação com rollback para isolar dados entre testes,
+    evitando conflitos de integridade (duplicação de telefones, etc).
+    """
+    # Inicia uma transação
+    connection = test_engine.connect()
+    transaction = connection.begin()
+
+    # Cria uma sessão vinculada à transação
+    session = TestSessionLocal(bind=connection)
 
     try:
-        yield db
+        yield session
     finally:
-        db.close()
+        # Desfaz todas as mudanças feitas durante o teste
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+@pytest.fixture
+def anyio_backend():
+    """
+    Fixture que configura o backend asyncio para testes assincronos.
+    Necessário para @pytest.mark.anyio funcionar corretamente.
+    """
+    return "asyncio"
