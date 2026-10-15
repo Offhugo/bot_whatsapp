@@ -58,6 +58,13 @@ class Usuario(Base):
         default={}
     )
 
+    # ⚡ NOVO: Timezone preferido do usuário (Item 10)
+    timezone = Column(
+        String,
+        nullable=False,
+        default="America/Fortaleza"
+    )
+
     criado_em = Column(
         DateTime,
         default=datetime.utcnow
@@ -132,6 +139,12 @@ class Empresa(Base):
 
     viagens = relationship(
         "Viagem",
+        back_populates="empresa"
+    )
+
+    # ⚡ NOVO: Relacionamento com conversas (Item 9)
+    conversas = relationship(
+        "Conversa",
         back_populates="empresa"
     )
 
@@ -286,6 +299,12 @@ class Viagem(Base):
         back_populates="viagem"
     )
 
+    # ⚡ NOVO: Relacionamento com conversas (Item 9)
+    conversas = relationship(
+        "Conversa",
+        back_populates="viagem"
+    )
+
 
 # ============================================================
 # 6. Registro operacional
@@ -361,6 +380,10 @@ class Conversa(Base):
 
     Permite manter contexto entre mensagens para tornar
     as conversas mais naturais e contextualizadas.
+
+    O JSONB contexto armazena dados heterogêneos e variáveis
+    (ex: km, distância, ajudantes, etc) que mudam conforme
+    a natureza de cada conversa.
     """
     __tablename__ = "conversas"
 
@@ -377,6 +400,22 @@ class Conversa(Base):
         index=True
     )
 
+    # ⚡ NOVO: Referências diretas a viagem e empresa (Item 9)
+    # Permite queries rápidas e integridade referencial
+    viagem_id = Column(
+        Integer,
+        ForeignKey("viagens.id"),
+        nullable=True,
+        index=True
+    )
+
+    empresa_id = Column(
+        Integer,
+        ForeignKey("empresas.id"),
+        nullable=True,
+        index=True
+    )
+
     # Histórico de mensagens (array de {role, content, timestamp})
     mensagens = Column(
         JSONB,
@@ -384,7 +423,8 @@ class Conversa(Base):
         default=[]
     )
 
-    # Contexto da conversa (ex: viagem_id, empresa_id)
+    # Contexto flexível (dados heterogêneos e variáveis)
+    # Exemplos: {km: 150, distancia: 200, ajudantes: 2, etc}
     contexto = Column(
         JSONB,
         nullable=True
@@ -401,7 +441,19 @@ class Conversa(Base):
         nullable=False
     )
 
+    # Relationships
     usuario = relationship(
         "Usuario",
+        back_populates="conversas"
+    )
+
+    # ⚡ NOVO: Relationships para viagem e empresa (Item 9)
+    viagem = relationship(
+        "Viagem",
+        back_populates="conversas"
+    )
+
+    empresa = relationship(
+        "Empresa",
         back_populates="conversas"
     )

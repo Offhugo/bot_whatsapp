@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.schemas.ai_response import AIResponseDTO
 from app.services.conversation_context_service import ConversationContextService
+from app.services.timezone_normalization_service import TimezoneNormalizationService
 
 
 load_dotenv()
@@ -27,6 +28,8 @@ class AIService:
         self.system_prompt_base = self._load_system_prompt()
         # ⚡ NOVO: Serviço para gerenciar histórico de conversas (Item 3)
         self.conversation_service = ConversationContextService()
+        # ⚡ NOVO: Serviço para normalizar timezones (Item 10)
+        self.timezone_service = TimezoneNormalizationService()
 
     def _load_system_prompt(self) -> str:
         prompt_path = (
@@ -97,16 +100,20 @@ class AIService:
         mensagem: str,
         timezone: str = None,
         usuario_id: int = None,
-        db: Session = None
+        db: Session = None,
+        viagem_id: int = None,
+        empresa_id: int = None
     ) -> AIResponseDTO:
         """
-        Processa mensagem com IA.
+        Processa mensagem com IA, incluindo contexto de conversa, timezone e viagem/empresa.
 
         Args:
             mensagem: Mensagem do usuário
             timezone: Timezone para contexto (ex: "America/Fortaleza")
             usuario_id: ID do usuário (opcional, para usar histórico)
             db: Sessão do banco de dados (necessário se usuario_id fornecido)
+            viagem_id: ID da viagem (Item 9, opcional)
+            empresa_id: ID da empresa (Item 9, opcional)
 
         Returns:
             AIResponseDTO com resposta parseada
@@ -115,6 +122,12 @@ class AIService:
             RuntimeError: Se há erro na chamada ou parsing
         """
         try:
+            # ⚡ NOVO: Obter timezone do usuário se não fornecido (Item 10)
+            if not timezone and usuario_id and db:
+                timezone = self.timezone_service.obter_timezone_usuario(
+                    usuario_id, db
+                )
+
             # ⚡ NOVO: Usar prompt com contexto temporal (Item 2)
             system_prompt = self._get_system_prompt_with_context(timezone)
 
@@ -134,6 +147,19 @@ class AIService:
                         usuario_id,
                         db=db
                     )
+
+                    # ⚡ NOVO: Atualizar viagem_id e empresa_id se fornecidos (Item 9)
+                    if viagem_id is not None or empresa_id is not None:
+                        self.conversation_service.atualizar_viagem_empresa(
+                            conversa.id,
+                            viagem_id=viagem_id,
+                            empresa_id=empresa_id,
+                            db=db
+                        )
+                        # Recarregar para ter os valores atualizados
+                        conversa = self.conversation_service.repository.buscar_por_id(
+                            conversa.id, db
+                        )
 
                     # Adicionar mensagem do usuário ao histórico
                     self.conversation_service.adicionar_mensagem_usuario(

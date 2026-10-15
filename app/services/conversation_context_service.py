@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.repositories.conversa_repository import ConversaRepository
 from app.models import Conversa
+import app.models as models
 
 logger = logging.getLogger(__name__)
 
@@ -311,6 +312,127 @@ class ConversationContextService:
                 f"Erro ao obter tamanho do histórico: {e}"
             )
             return 0
+
+    def atualizar_viagem_empresa(
+        self,
+        conversa_id: int,
+        viagem_id: int = None,
+        empresa_id: int = None,
+        db: Session = None
+    ) -> Conversa:
+        """
+        Atualiza IDs de viagem e empresa na conversa (Item 9).
+
+        Args:
+            conversa_id: ID da conversa
+            viagem_id: ID da viagem (None = manter existente)
+            empresa_id: ID da empresa (None = manter existente)
+            db: Sessão do banco de dados
+
+        Returns:
+            Conversa atualizada
+
+        Raises:
+            ValueError: Se conversa não existe
+        """
+        try:
+            conversa = self.repository.buscar_por_id(conversa_id, db)
+            if not conversa:
+                raise ValueError(f"Conversa {conversa_id} não encontrada")
+
+            # Validar se viagem e empresa existem
+            if viagem_id is not None:
+                viagem = db.query(models.Viagem).get(viagem_id)
+                if not viagem:
+                    logger.warning(f"Viagem {viagem_id} não encontrada")
+                else:
+                    conversa.viagem_id = viagem_id
+
+            if empresa_id is not None:
+                empresa = db.query(models.Empresa).get(empresa_id)
+                if not empresa:
+                    logger.warning(f"Empresa {empresa_id} não encontrada")
+                else:
+                    conversa.empresa_id = empresa_id
+
+            conversa.atualizado_em = datetime.utcnow()
+
+            db.add(conversa)
+            db.commit()
+            db.refresh(conversa)
+
+            logger.info(
+                f"Conversa {conversa_id} atualizada: "
+                f"viagem_id={conversa.viagem_id}, empresa_id={conversa.empresa_id}"
+            )
+
+            return conversa
+
+        except Exception as e:
+            logger.error(f"Erro ao atualizar viagem/empresa: {e}")
+            raise
+
+    def obter_contexto_completo(
+        self,
+        conversa_id: int,
+        db: Session = None
+    ) -> dict:
+        """
+        Obtém contexto completo da conversa incluindo dados de viagem/empresa (Item 9).
+
+        Args:
+            conversa_id: ID da conversa
+            db: Sessão do banco de dados
+
+        Returns:
+            Dict com contexto completo:
+            {
+                "viagem_id": 123,
+                "empresa_id": 5,
+                "viagem": {...},
+                "empresa": {...},
+                "metadata": {...}
+            }
+        """
+        try:
+            conversa = self.repository.buscar_por_id(conversa_id, db)
+            if not conversa:
+                return {}
+
+            contexto = {
+                "viagem_id": conversa.viagem_id,
+                "empresa_id": conversa.empresa_id,
+                "metadata": conversa.contexto or {}
+            }
+
+            # Lazy-load dados da viagem
+            if conversa.viagem_id:
+                viagem = db.query(models.Viagem).get(conversa.viagem_id)
+                if viagem:
+                    contexto["viagem"] = {
+                        "id": viagem.id,
+                        "usuario_id": viagem.usuario_id,
+                        "status": viagem.status,
+                        "detalhes": viagem.detalhes,
+                        "criado_em": viagem.criado_em.isoformat() if viagem.criado_em else None
+                    }
+
+            # Lazy-load dados da empresa
+            if conversa.empresa_id:
+                empresa = db.query(models.Empresa).get(conversa.empresa_id)
+                if empresa:
+                    contexto["empresa"] = {
+                        "id": empresa.id,
+                        "nome": empresa.nome,
+                        "cnpj": empresa.cnpj,
+                        "criado_em": empresa.criado_em.isoformat() if empresa.criado_em else None
+                    }
+
+            return contexto
+
+        except Exception as e:
+            logger.error(f"Erro ao obter contexto completo: {e}")
+            return {}
 
     def obter_ultima_mensagem(
         self,
