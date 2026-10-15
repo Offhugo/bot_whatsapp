@@ -83,6 +83,12 @@ class Usuario(Base):
         back_populates="usuario"
     )
 
+    # ⚡ NOVO: Histórico de conversas (Item 3)
+    conversas = relationship(
+        "Conversa",
+        back_populates="usuario"
+    )
+
 
 # ============================================================
 # 2. Empresa
@@ -342,4 +348,60 @@ class Registro(Base):
     viagem = relationship(
         "Viagem",
         back_populates="registros"
+    )
+
+
+# ============================================================
+# 7. Conversa (Item 3 - Histórico)
+# ============================================================
+
+class Conversa(Base):
+    """
+    Armazena histórico de conversas com usuários.
+
+    Permite manter contexto entre mensagens para tornar
+    as conversas mais naturais e contextualizadas.
+    """
+    __tablename__ = "conversas"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    usuario_id = Column(
+        Integer,
+        ForeignKey("usuarios.id"),
+        nullable=False,
+        index=True
+    )
+
+    # Histórico de mensagens (array de {role, content, timestamp})
+    mensagens = Column(
+        JSONB,
+        nullable=False,
+        default=[]
+    )
+
+    # Contexto da conversa (ex: viagem_id, empresa_id)
+    contexto = Column(
+        JSONB,
+        nullable=True
+    )
+
+    # Timestamps
+    criado_em = Column(
+        DateTime,
+        nullable=False
+    )
+
+    atualizado_em = Column(
+        DateTime,
+        nullable=False
+    )
+
+    usuario = relationship(
+        "Usuario",
+        back_populates="conversas"
     )
