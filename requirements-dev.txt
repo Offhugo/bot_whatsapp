@@ -1,0 +1,6 @@
+# Dependências de desenvolvimento e testes (não entram na imagem Docker).
+-r requirements.txt
+
+pytest>=7.0
+# Os testes usam @pytest.mark.anyio (plugin do anyio)
+anyio>=4.0

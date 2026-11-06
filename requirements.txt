@@ -1,0 +1,16 @@
+# Dependências de execução (usadas pela imagem Docker).
+# Limites mínimos derivados do uso real no código:
+# - pydantic v2: app/schemas usa field_validator
+# - openai >= 1.40: app/services/ai_service.py usa beta.chat.completions.parse
+# - sqlalchemy 2.x: app/database.py e models
+# Para travar as versões exatas, rode no seu ambiente: pip freeze > requirements.lock
+fastapi>=0.100
+uvicorn>=0.23
+sqlalchemy>=2.0
+psycopg2-binary>=2.9
+alembic>=1.12
+python-dotenv>=1.0
+pydantic>=2.0
+httpx>=0.25
+openai>=1.40
+pytz>=2023.3

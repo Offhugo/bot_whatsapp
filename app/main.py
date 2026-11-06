@@ -95,4 +95,11 @@ async def tratar_erro_inesperado(
     )
 
 
+@app.get("/health", include_in_schema=False)
+async def health() -> dict:
+    # Usado pelo health check da plataforma de deploy.
+    # Não consulta o banco de propósito: só confirma que o processo responde.
+    return {"status": "ok"}
+
+
 app.include_router(webhook_router)
